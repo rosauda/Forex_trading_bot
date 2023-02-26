@@ -2,6 +2,7 @@ import os
 import requests
 import pandas as pd
 import json
+from dateutil import parser
 
 # ---------------------------- VARIABLES ------------------------------- #
 
@@ -37,7 +38,6 @@ data = response.json()
 
 # Creating a list with all instruments
 instruments_list = data["instruments"]
-print(instruments_list[0].keys())
 
 # List containing the information that I need for each instrument
 key_i = ['name', 'type', 'displayName', 'pipLocation', 'displayPrecision', 'tradeUnitsPrecision', 'marginRate']
@@ -51,3 +51,47 @@ for i in instruments_list:
 # Saving data to a json file in the project folder
 with open("instrument.json", "w") as f:
     f.write(json.dumps(instruments_dict, indent=2))
+
+
+def fetch_candles(pair_name, count=10, granularity="H1"):
+    url = f"{OANDA_URL}/instruments/{pair_name}/candles"
+    params = dict(
+        count=count,
+        granularity=granularity,
+        price="MBA",
+    )
+
+    try:
+        response = session.get(url, params=params, data=None, headers=None)
+        response.raise_for_status()  # Raises an exception for non-2xx response codes
+        data = response.json()
+        if "candles" in data:
+            data = data['candles']
+        else:
+            data = []
+    except requests.exceptions.HTTPError as e:
+        print(f"HTTP error occurred: {e}")
+        data = []
+
+    return response.status_code, data
+
+
+def get_candles_df(data):
+    # Creating data frame
+    prices = ['mid', 'bid', 'ask']
+    ohlc = ['o', 'h', 'l', 'c']
+
+    if len(data) == 0:
+        return pd.DataFrame()
+
+    final_data = [{**{'time': parser.parse(candle['time']), 'volume': candle['volume']},
+                   **{f"{p}_{o}": float(candle[p][o]) for p in prices for o in ohlc}}
+                  for candle in data if candle['complete']]
+    df = pd.DataFrame.from_records(final_data)
+    return df
+
+
+code, data = fetch_candles("EUR_USD", count=10, granularity="H4")
+candles_df = get_candles_df(data)
+
+print(candles_df.info())

@@ -50,7 +50,7 @@ for i in instruments_list:
 
 # Saving data to a json file in the project folder
 with open("instrument.json", "w") as f:
-    f.write(json.dumps(instruments_dict, indent=2))
+    json.dump(instruments_dict, f, indent=2)
 
 
 def fetch_candles(pair_name, count=10, granularity="H1"):
@@ -91,7 +91,7 @@ def get_candles_df(data):
     return df
 
 
-code, data = fetch_candles("EUR_USD", count=10, granularity="H4")
-candles_df = get_candles_df(data)
-
-print(candles_df.info())
+if __name__ == "__main__":
+    code, data = fetch_candles("EUR_USD", count=10, granularity="H4")
+    candles_df = get_candles_df(data)
+    print(candles_df.info())

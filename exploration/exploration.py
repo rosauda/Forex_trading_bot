@@ -102,7 +102,7 @@ def create_data_file(pair_name, count=10, granularity="H1"):
     if len(data) == 0:
         print("No candles", pair_name)
     candles_df = get_candles_df(data)
-    candles_df.to_pickle(f"{pair_name}_{granularity}.pkl")
+    candles_df.to_pickle(f"../data/{pair_name}_{granularity}.pkl")
     print(f"{pair_name} {granularity} {candles_df.shape[0]} candles, {candles_df.time.min()} {candles_df.time.max()}")
 
 
@@ -119,3 +119,11 @@ if __name__ == "__exploration__":
                     create_data_file(pr, count=4001, granularity="H4")
 
     print(candles_df.info())
+
+CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'CHF', 'NZD', 'CAD', 'AUD']
+for p1 in CURRENCIES:
+    for p2 in CURRENCIES:
+        pr = f"{p1}_{p2}"
+        if pr in instruments_dict:
+            for g in ['H1', 'H4']:
+                create_data_file(pr, count=4001, granularity=g)

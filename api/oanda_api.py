@@ -51,5 +51,5 @@ class OandaApi:
     def get_account_summary(self):
         return self.get_account_ep("summary", "account")
 
-    def get_account_instruments_(self):
+    def get_account_instruments(self):
         return self.get_account_ep("instruments", "instruments")

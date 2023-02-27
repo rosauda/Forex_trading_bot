@@ -1,12 +1,14 @@
 import datetime as dt
 import pandas as pd
 import plotly.graph_objects as go
+from typing import List
 
 
 class CandlePlot:
-    def __init__(self, df):
+    def __init__(self, df, candles=True):
         self.fig = None
         self.df_plot = df.copy()
+        self.candles = candles
         self.create_candlestick_chart()
 
     def add_timestr(self):
@@ -23,36 +25,37 @@ class CandlePlot:
         - mid_l
         - mid_c
         """
-        # Validate input
-        if "sTime" not in self.df_plot.columns or \
-                "mid_o" not in self.df_plot.columns or "mid_h" \
-                not in self.df_plot.columns or \
-                "mid_l" not in self.df_plot.columns or "mid_c" not in self.df_plot.columns:
-            raise ValueError("self.df_plot must contain columns 'sTime', 'mid_o', 'mid_h', 'mid_l', and 'mid_c'")
-
         # Add time string column
         self.add_timestr()
-
-        # Create the candlestick chart
-        chart_style = {
-            'line': {'width': 1},
-            'opacity': 1,
-            'increasing': {'fillcolor': '#24A06B', 'line_color': '#2EC886'},
-            'decreasing': {'fillcolor': '#CC2E3C', 'line_color': '#FF3A4C'}
-        }
-
         fig = go.Figure()
-        fig.add_trace(go.Candlestick(
-            x=self.df_plot.sTime,
-            open=self.df_plot.mid_o,
-            high=self.df_plot.mid_h,
-            low=self.df_plot.mid_l,
-            close=self.df_plot.mid_c,
-            **chart_style
-        ))
-
         # assign the created figure to self.fig
         self.fig = fig
+
+        if self.candles:
+            # Validate input
+            # if "sTime" not in self.df_plot.columns or \
+            #         "mid_o" not in self.df_plot.columns or \
+            #         "mid_h" not in self.df_plot.columns or \
+            #         "mid_l" not in self.df_plot.columns or \
+            #         "mid_c" not in self.df_plot.columns:
+            #     raise ValueError("self.df_plot must contain columns 'sTime', 'mid_o', 'mid_h', 'mid_l', and 'mid_c'")
+
+            # Create the candlestick chart
+            chart_style = {
+                'line': {'width': 1},
+                'opacity': 1,
+                'increasing': {'fillcolor': '#24A06B', 'line_color': '#2EC886'},
+                'decreasing': {'fillcolor': '#CC2E3C', 'line_color': '#FF3A4C'}
+            }
+
+            fig.add_trace(go.Candlestick(
+                x=self.df_plot.sTime,
+                open=self.df_plot.mid_o,
+                high=self.df_plot.mid_h,
+                low=self.df_plot.mid_l,
+                close=self.df_plot.mid_c,
+                **chart_style
+            ))
 
     def update_layout(self, figure_width, figure_height, xaxis_nticks):
         """
@@ -93,7 +96,17 @@ class CandlePlot:
         # Update layout with settings
         self.fig.update_layout(layout_settings)
 
-    def show_plot(self, figure_width=1500, figure_height=400, xaxis_nticks=5):
+    def add_traces(self, line_traces):
+        for t in line_traces:
+            self.fig.add_trace(go.Scatter(
+                x=self.df_plot.sTime,
+                y=self.df_plot[t],
+                line=dict(width=2),
+                line_shape="spline",
+                name=t
+            ))
+
+    def show_plot(self, figure_width=1500, figure_height=400, xaxis_nticks=5, line_traces=[]):
         """
         Update the layout of the Plotly figure object and display the plot.
 
@@ -101,13 +114,20 @@ class CandlePlot:
         - figure_width: integer, width of the figure in pixels (default: 1500)
         - figure_height: integer, height of the figure in pixels (default: 400)
         - xaxis_nticks: integer, number of ticks on the x-axis (default: 5)
+        - line_traces: list (default: empty list)
         """
-        # Validate input
-        if not isinstance(figure_width, int) or figure_width <= 0:
-            raise ValueError("figure_width must be a positive integer")
+        # # Validate input
+        #
+        # if line_traces is None:
+        #     line_traces = []
+        # if not isinstance(figure_width, int) or figure_width <= 0:
+        #     raise ValueError("figure_width must be a positive integer")
+        #
+        # if not isinstance(figure_height, int) or figure_height <= 0:
+        #     raise ValueError("figure_height must be a positive integer")
 
-        if not isinstance(figure_height, int) or figure_height <= 0:
-            raise ValueError("figure_height must be a positive integer")
+        # Adding traces
+        self.add_traces(line_traces)
 
         # Update layout if necessary
         if figure_width is not None and figure_height is not None and xaxis_nticks is not None:

@@ -1,17 +1,25 @@
 import pandas as pd
+import os.path
 from infrastructure.instrument_collection import instrumentCollection as ic
+
+BUY = 1
+SELL = -1
+NONE = 0
+get_ma_col = lambda x: f'MA_{x}'
+add_cross = lambda x: f"{x.ma_s}_{x.ma_l}"
 
 
 class MAResult:
-    def __init__(self,  df_trades, pairname, ma_l, ma_s):
+    def __init__(self,  df_trades, pairname, ma_l, ma_s, granularity):
         self.pairname = pairname
         self.df_trades = df_trades
         self.ma_s = ma_s
         self.ma_l = ma_l
+        self.granularity = granularity
         self.result = self.result_ob()
 
     def __repr__(self):
-        return str(self.result_ob())
+        return str(self.result)
 
     def result_ob(self):
         return dict(
@@ -22,18 +30,10 @@ class MAResult:
             max_gain=int(self.df_trades.GAIN.max()),
             min_gain=int(self.df_trades.GAIN.min()),
             ma_l=self.ma_l,
-            ma_s=self.ma_s
+            ma_s=self.ma_s,
+            cross=f"{self.ma_s}_{self.ma_l}",
+            granularity=self.granularity
         )
-
-
-
-
-
-
-BUY = 1
-SELL = -1
-NONE = 0
-get_ma_col = lambda x: f'MA_{x}'
 
 
 def load_price_data(pair, granularity, ma_list):
@@ -53,56 +53,100 @@ def is_trade(row):
     return NONE
 
 
-def get_trade(df_analysis, instrument):
+def get_trade(df_analysis, instrument, granularity):
     df_trades = df_analysis[df_analysis.TRADE != NONE].copy()
     df_trades["DIFF"] = df_trades.mid_c.diff().shift(-1)
     df_trades.fillna(0, inplace=True)
     df_trades['GAIN'] = df_trades.DIFF / instrument.pipLocation
     df_trades['GAIN'] = df_trades['GAIN'] * df_trades['TRADE']
-    total_gain = df_trades['GAIN'].sum()
-    return dict(total_gain=int(total_gain), df_trades=df_trades)
+    df_trades['granularity'] = granularity
+    df_trades['pair'] = instrument.name
+    df_trades['GAIN_C'] = df_trades['GAIN'].cumsum()
+    return df_trades
 
 
-def assess_pair(price_data, ma_l, ma_s, instrument):
+def assess_pair(price_data, ma_l, ma_s, instrument, granularity):
     df_analysis = price_data.copy()
     df_analysis['DELTA'] = df_analysis[ma_s] - df_analysis[ma_l]
     df_analysis['DELTA_PREV'] = df_analysis['DELTA'].shift(1)
     df_analysis['TRADE'] = df_analysis.apply(is_trade, axis=1)
-    # print(instrument.name, ma_l, ma_s)
-    # print(df_analysis.head(3))
-    return get_trade(df_analysis, instrument)
+    df_trades = get_trade(df_analysis, instrument, granularity)
+    df_trades['ma_l'] = ma_l
+    df_trades['ma_s'] = ma_s
+    df_trades["cross"] = df_trades.apply(add_cross, axis=1)
+    return MAResult(
+        df_trades,
+        instrument.name,
+        ma_l,
+        ma_s,
+        granularity
+    )
 
 
-def analyse_pair(instrument, granularity, ma_long, ma_short):
+def append_df_to_file(df, filename):
+    if os.path.isfile(filename):
+        fd = pd.read_pickle(filename)
+        df = pd.concat([fd, df])
+
+    df.reset_index(inplace=True, drop=True)
+    df.to_pickle(filename)
+    print(filename, df.shape)
+    print(df.tail(2))
+
+
+def get_fullname(filepath, filename):
+    return f"{filepath}/{filename}.pkl"
+
+
+def process_macro(results_list, filename):
+    rl = [x.result for x in results_list]
+    df = pd.DataFrame.from_dict(rl)
+    append_df_to_file(df, filename)
+
+
+def process_trades(results_list, filename):
+    df = pd.concat([x.df_trades for x in results_list])
+    append_df_to_file(df, filename)
+
+
+def process_results(results_list, filepath):
+    process_macro(results_list, get_fullname(filepath, "ma_res"))
+    process_trades(results_list, get_fullname(filepath, "ma_trad"))
+
+    # rl = [x.result for x in results_list]
+    #
+    # print(df)
+    # print(results_list[0].df_trades.head(2))
+
+
+def analyse_pair(instrument, granularity, ma_long, ma_short, filepath):
     ma_list = set(ma_long + ma_short)
     pair = instrument.name
 
     price_data = load_price_data(pair, granularity, ma_list)
-    # print(pair)
-    # print(price_data.head(3))
+
+    results_list = []
 
     for ma_l in ma_long:
         for ma_s in ma_short:
             if ma_l <= ma_s:
                 continue
 
-            result = assess_pair(price_data, get_ma_col(ma_l), get_ma_col(ma_s), instrument)
-
-            tg = result['total_gain']
-            nt = result['df_trades'].shape[0]
-
-            print(f"{pair} {granularity} {ma_s}-{ma_l} nt:{nt} tg:{tg}")
-
+            ma_result = assess_pair(price_data, get_ma_col(ma_l), get_ma_col(ma_s), instrument, granularity)
+            print(ma_result)
+            results_list.append(ma_result)
+    process_results(results_list, filepath)
 
 
 def run_ma_sim(curr_list=["EUR", "USD"],
-               granularity=['H1'],
-               ma_long=[20, 40, 80],
-               ma_short=[10, 20]):
+               granularity=['H1', 'H4'],
+               ma_long=[20, 40, 80, 120, 150],
+               ma_short=[10, 20, 30, 40],
+               filepath='./data'):
     ic.LoadInstruments("./data")
     for g in granularity:
         for p1 in curr_list:
             for p2 in curr_list:
                 pair = f'{p1}_{p2}'
                 if pair in ic.instruments_dict.keys():
-                    analyse_pair(ic.instruments_dict[pair], g, ma_long, ma_short)
+                    analyse_pair(ic.instruments_dict[pair], g, ma_long, ma_short, filepath)

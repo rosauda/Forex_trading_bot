@@ -38,4 +38,18 @@ class OandaApi:
         except Exception as error:
             return False, {'Exception': str(error)}
 
+    def get_account_ep(self, ep, data_key):
+        url = f"accounts/{ACCOUNT_ID}/{ep}"
+        ok, data = self.make_request(url)
 
+        if ok == True and data_key in data:
+            return data[data_key]
+        else:
+            print("ERROR get_account_ep()", data)
+            return None
+
+    def get_account_summary(self):
+        return self.get_account_ep("summary", "account")
+
+    def get_instruments(self):
+        return self.get_account_ep("instruments", "instruments")

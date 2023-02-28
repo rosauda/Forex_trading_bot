@@ -4,7 +4,7 @@ import pandas as pd
 
 def add_pair_sheets(df_ma_res, writer):
     for p in df_ma_res.pair.unique():
-        tdf = df_ma_res[df_ma_res.pai == p]
+        tdf = df_ma_res[df_ma_res.pair == p]
         tdf.to_excel(writer, sheet_name=p, index=False)
 
 

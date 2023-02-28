@@ -111,7 +111,7 @@ def process_trades(results_list, filename):
 
 def process_results(results_list, filepath):
     process_macro(results_list, get_fullname(filepath, "ma_res"))
-    process_trades(results_list, get_fullname(filepath, "ma_trad"))
+    process_trades(results_list, get_fullname(filepath, "ma_trades"))
 
     # rl = [x.result for x in results_list]
     #

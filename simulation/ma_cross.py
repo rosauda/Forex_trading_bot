@@ -10,7 +10,7 @@ add_cross = lambda x: f"{x.ma_s}_{x.ma_l}"
 
 
 class MAResult:
-    def __init__(self,  df_trades, pairname, ma_l, ma_s, granularity):
+    def __init__(self, df_trades, pairname, ma_l, ma_s, granularity):
         self.pairname = pairname
         self.df_trades = df_trades
         self.ma_s = ma_s
@@ -112,11 +112,6 @@ def process_trades(results_list, filename):
 def process_results(results_list, filepath):
     process_macro(results_list, get_fullname(filepath, "ma_res"))
     process_trades(results_list, get_fullname(filepath, "ma_trades"))
-
-    # rl = [x.result for x in results_list]
-    #
-    # print(df)
-    # print(results_list[0].df_trades.head(2))
 
 
 def analyse_pair(instrument, granularity, ma_long, ma_short, filepath):

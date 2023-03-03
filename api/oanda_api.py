@@ -82,7 +82,9 @@ class OandaApi:
 
         data = self.fetch_candles(pair_name, **kwargs)
 
-        if data is None or len(data) == 0:
+        if data is None:
+            return None
+        if len(data) == 0:
             return pd.DataFrame()
 
         # Creating data frame
